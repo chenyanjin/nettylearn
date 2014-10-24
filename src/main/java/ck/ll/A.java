@@ -1,5 +1,8 @@
 package ck.ll;
 
+import communicate.CommunicateClient;
+import nettying.Message;
+
 import java.util.Scanner;
 import java.util.regex.MatchResult;
 
@@ -17,7 +20,12 @@ public class A {
 //        System.out.println("input-name="+dest+";age="+content);
 
 
-        String s = String.format("%1$08d",234);
-        System.out.println(s);
+        CommunicateClient cc = CommunicateClient.getInstance();
+        boolean b1 = false,b2 = false,b3 = false;
+         b1 = cc.testConnect("127.0.0.1",9342,"ck");
+//         b2 = cc.testConnect("127.0.0.1",9342,"ll");
+//         b3 = cc.testConnect("127.0.0.1",9342,"ck");
+        cc.sendMessage(new Message(2,"hello ck","ck","ck"),"ck");
+        System.out.println("b1="+b1+" b2="+b2+" b3="+b3);
     }
 }

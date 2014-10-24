@@ -1,4 +1,4 @@
-package nettying;
+package communicate;
 
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.*;
@@ -8,44 +8,31 @@ import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.serialization.ClassResolvers;
 import io.netty.handler.codec.serialization.ObjectDecoder;
 import io.netty.handler.codec.serialization.ObjectEncoder;
-
-import java.io.BufferedInputStream;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Scanner;
-import java.util.regex.MatchResult;
+import nettying.Message;
 
 /**
- * Created by chenkai on 2014/10/23.
+ * Created by chenkai on 2014/10/24.
  */
-public class EchoObjectClient {
-
-
-    public static void main(String[] args) throws Exception {
-
-        // Parse options.
-        final String host = args[0];
-        final int port = Integer.parseInt(args[1]);
-        Scanner scanner = new Scanner(System.in);
-        final String clientId = scanner.next();
-
-        new EchoObjectClient(host, port,clientId).run();
-        System.out.println("main thread continue...");
-    }
+public class ServerConnectable implements Runnable {
 
     private final String host;
     private final int port;
-    final String clientId;
-    public EchoObjectClient(String host, int port,String clientId) {
+    private final String clientId;
+    private CommunicateClient cc;
+    public ServerConnectable(String host, int port, String clientId,CommunicateClient cc) {
         this.host = host;
         this.port = port;
         this.clientId = clientId;
+        this.cc = cc;
     }
 
-    public void run() throws Exception {
+
+    @Override
+    public void run() {
         EventLoopGroup group = new NioEventLoopGroup();
         try {
             Bootstrap b = new Bootstrap();
+            final String cid = clientId;
             b.group(group)
                     .channel(NioSocketChannel.class)
                     .handler(new ChannelInitializer<SocketChannel>() {
@@ -54,25 +41,31 @@ public class EchoObjectClient {
                             ch.pipeline().addLast(
                                     new ObjectEncoder(),
                                     new ObjectDecoder(ClassResolvers.cacheDisabled(null)),
-                                    new ObjectEchoClientHandler());
+                                    new ObjectEchoClientHandler(cid));
                         }
                     });
 
             // Start the connection attempt.
-            b.connect(host, port).sync().channel().closeFuture().sync();
+            ChannelFuture cf = b.connect(host, port).sync();
+            cc.getSessions().put(clientId,cf.channel());
+            cc.unlock();
+            cf.channel().closeFuture().sync();
 
+        } catch (InterruptedException e) {
+            e.printStackTrace();
         } finally {
             group.shutdownGracefully();
         }
     }
 
-    class ObjectEchoClientHandler extends ChannelHandlerAdapter {
 
+    class ObjectEchoClientHandler extends ChannelHandlerAdapter {
+        private String clientId;
         /**
          * Creates a client-side handler.
          */
-        public ObjectEchoClientHandler() {
-
+        public ObjectEchoClientHandler(String clientId) {
+            this.clientId = clientId;
         }
 
         @Override
@@ -106,27 +99,7 @@ public class EchoObjectClient {
             Message m = (Message)msg;
 
             System.out.println("[RECEIVE MSG]:" + m.getMsgSource() + " say to " + m.getMsgDest() + ": " + m.getMsgContent());
-            final ChannelHandlerContext cctx = ctx;
-            new Thread(new Runnable() {
-                @Override
-                public void run() {
-                    Scanner scanner = new Scanner(System.in);
-                    scanner.findInLine("(\\w+)\\s(.+)");
-                    MatchResult mr = scanner.match();
-
-                    String dest = mr.group(1);
-                    String content = mr.group(2);
-                    cctx.writeAndFlush(new Message(2,content,clientId,dest));
-                }
-            }).start();
-
         }
-
-
-//        @Override
-//        public void channelReadComplete(ChannelHandlerContext ctx) throws Exception {
-//            ctx.flush();
-//        }
 
         @Override
         public void exceptionCaught(
