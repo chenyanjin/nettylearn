@@ -1,6 +1,7 @@
 package ck.ll.discard;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerAdapter;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.util.CharsetUtil;
@@ -10,6 +11,7 @@ import io.netty.util.ReferenceCountUtil;
 /**
  * Created by chenkai on 2014/10/9.
  */
+@ChannelHandler.Sharable
 public class DiscardServerHandler extends ChannelHandlerAdapter {
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
